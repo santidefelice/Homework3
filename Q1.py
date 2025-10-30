@@ -120,7 +120,7 @@ class SudokuSolver:
         self.solution_count += 1
         self.all_solutions.append(copy.deepcopy(board))
     
-    def generate_puzzle(self, num_filled):
+    def generate_puzzle(self, num_filled, ensure_solvable=True, max_tries=200):
         """
         Generate a valid Sudoku puzzle with specified number of pre-filled cells.
         
@@ -132,22 +132,38 @@ class SudokuSolver:
         Time Complexity: O(n * 27) where n is num_filled
         - For each cell, check validity (27 operations)
         """
-        self.board = [[0] * 9 for _ in range(9)]
-        filled = 0
-        attempts = 0
-        max_attempts = 1000
-        
-        while filled < num_filled and attempts < max_attempts:
-            row = random.randint(0, 8)
-            col = random.randint(0, 8)
-            num = random.randint(1, 9)
-            
-            if self.board[row][col] == 0 and self.is_valid(self.board, row, col, num):
-                self.board[row][col] = num
-                filled += 1
-            
-            attempts += 1
-        
+        # Try repeatedly until we get a puzzle that is globally solvable
+        for _ in range(max_tries):
+            self.board = [[0] * 9 for _ in range(9)]
+            filled = 0
+            attempts = 0
+            max_attempts = 2000
+
+            # Randomly place numbers respecting local constraints
+            while filled < num_filled and attempts < max_attempts:
+                row = random.randint(0, 8)
+                col = random.randint(0, 8)
+                num = random.randint(1, 9)
+
+                if self.board[row][col] == 0 and self.is_valid(self.board, row, col, num):
+                    self.board[row][col] = num
+                    filled += 1
+
+                attempts += 1
+
+            if filled < num_filled:
+                # Could not place requested number of clues this round; try again
+                continue
+
+            if not ensure_solvable:
+                return self.board
+
+            # Global validity: ensure at least one full solution exists
+            candidate = copy.deepcopy(self.board)
+            if self.solve_sudoku(candidate):
+                return self.board
+
+        # Fallback: return the last constructed board (should be rare); at worst it's locally valid
         return self.board
     
     def print_board(self, board):
